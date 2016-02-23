@@ -1,0 +1,12 @@
+#!/bin/bash
+DNSNAME="unbound"
+
+DNS=`grep "$DNSNAME" /etc/hosts | head -n1 | awk '{print $1}'`
+cp /usr/local/share/openvpn/openvpn.conf /etc/openvpn/
+LOCALROUTE=`getIPNetwork`
+
+echo "push route $LOCALROUTE" >> /etc/openvpn/openvpn.conf
+
+if [ -n "$DNS" ]; then
+	echo "push dhcp-option DNS $DNS" >> /etc/openvpn/openvpn.conf
+fi

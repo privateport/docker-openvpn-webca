@@ -1,0 +1,77 @@
+#!/bin/bash
+
+function print_help {
+cat <<EOF
+       OPENVPN CLIENT CERT and KEY GENERATION
+===============================================
+Usage:
+
+Options:
+        -n | --commonname	A one word description for the device of the certificate.  i.e MyPhone
+	-D | --configdir	Configuration dir where the ovpn server ssl files are stored
+
+_______________________________________________
+by SneakyScampi
+EOF
+}
+
+if [ $# -eq 0 ]; then
+        print_help; exit 0
+fi
+
+if [ -z "$CONFIGDIR" ]; then
+	CONFIGDIR=/etc/openvpn
+fi
+
+DEBUG=false
+OPTS=`getopt -o n:C: --long commonname:,configdir: -n 'parse-options' -- "$@"`
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+
+echo #OPTS
+eval set -- "$OPTS"
+while true; do
+  case "$1" in
+        -h | --help )           print_help; exit 0; shift ;;
+        -n | --commonname )     COMMONNAME="$2"; shift; shift ;;
+        -C | --configdir)     CONFIGDIR="$2"; shift; shift ;;
+        -- ) shift; break ;;
+        * ) break ;;
+  esac
+done
+
+if [ ! -f "$CONFIGDIR/ca.crt" ]; then
+	echo "Error: CA files could not be found."; exit 0
+fi
+if [ -z "$COMMONNAME" ]; then
+	echo "Error, commonname not supplied"; exit 1
+fi
+
+OVPNCONFIG=$CONFIGDIR/$COMMONNAME/client.conf
+
+
+#Let's build the client config
+
+#Base Config
+cp /usr/local/share/openvpn/client.conf	$OVPNCONFIG
+
+#Private Key
+echo "<key>" >> $OVPNCONFIG
+cat $CONFIGDIR/$COMMONNAME/$COMMONNAME.key >> $OVPNCONFIG
+echo "</key>" >> $OVPNCONFIG
+
+#Certificate
+echo "<cert>" >> $OVPNCONFIG
+cat $CONFIGDIR/$COMMONNAME/$COMMONNAME.crt >> $OVPNCONFIG
+echo "</cert>" >> $OVPNCONFIG
+
+#CA Cert
+echo "<ca>" >> $OVPNCONFIG
+cat $CONFIGDIR/ca.crt >> $OVPNCONFIG
+echo "</ca>" >> $OVPNCONFIG
+
+#TLS-AUTH
+echo "<tls-auth>" >> $OVPNCONFIG
+cat $CONFIGDIR/server/ta.key >> $OVPNCONFIG
+echo "</tls-auth>" >> $OVPNCONFIG
+
+
